@@ -87,7 +87,7 @@ def process_image(request):
 
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def chat_with_image(request):
     image_id = request.data.get('image_id')
     question = request.data.get('question')

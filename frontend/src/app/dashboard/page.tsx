@@ -141,9 +141,6 @@ export default function Dashboard() {
     setDetections(sorted);
   };
 
-  // --- NEW FUNCTION: Renders Text with Bold Support ---
-  // This splits the text by '**'. Odd parts become bold.
-  // Example: "Hello **World**" -> ["Hello ", "World", ""] -> "World" is index 1 (odd) -> Bold
   const renderMessage = (content: string) => {
     const parts = content.split('**');
     return parts.map((part, index) => 
@@ -265,7 +262,6 @@ export default function Dashboard() {
                     <div className={`${styles.messageAvatar} ${msg.role === 'user' ? styles.user : styles.ai}`}>
                           {msg.role === 'user' ? getInitials() : 'AI'}
                     </div>
-                    {/* --- CHANGE HERE: Use renderMessage instead of direct string --- */}
                     <div className={styles.messageContent}>
                       {renderMessage(msg.content)}
                     </div>

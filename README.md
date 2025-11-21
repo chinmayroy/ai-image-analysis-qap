@@ -39,7 +39,7 @@ This project is containerized using Docker and consists of two main services:
     ```
 
 2.  **Configure Environment Variables**
-    Create a `.env` file in the root directory and add your secrets:
+    Create a `.env` file in the root directory (Inside backend folder) and add your secrets:
     ```properties
     # --- Backend Secrets ---
     SECRET_KEY=your_django_secret_key_here
@@ -83,10 +83,11 @@ ai-image-analysis-qap/
 │   ├── config/              # Project Settings
 │   ├── media/               # Stores uploaded/annotated images
 │   └── Dockerfile           # Backend container config
+│   └── .env                     # Environment variables
 ├── frontend/                # Next.js Project
 │   ├── src/
-    │   ├── app/             # Pages (Login, Dashboard)
+│   │   ├── app/             # Pages (Login, Dashboard)
 │   │   ├── utils/           # API helpers
 │   └── Dockerfile           # Frontend container config
+│   └── .env                     # Environment variables
 ├── docker-compose.yml       # Orchestration
-└── .env                     # Environment variables

@@ -65,7 +65,6 @@ def detect_objects(image_instance):
         )
         draw.text((bbox[0] + 5, bbox[1] + 5), label, fill="white", font=font)
 
-        # --- CHANGE IS HERE ---
         # We save it as "49%" (String) instead of 49 (Int)
         # This ensures the AI Chat reads it with the percent symbol.
         detections.append({
