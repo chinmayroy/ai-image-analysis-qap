@@ -46,12 +46,16 @@ This project is containerized using Docker and consists of two main services:
     GEMINI_API_KEY=your_google_gemini_api_key_here
     DEBUG=True
     ALLOWED_HOSTS=backend,localhost,127.0.0.1
+    ```
 
+3.  **Configure Environment Variables**
+    Create a `.env` file in the root directory (Inside frontend folder) and add your secrets:
+    ```properties
     # --- Frontend Configuration ---
     NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
     ```
 
-3.  **Build and Run with Docker**
+4.  **Build and Run with Docker**
     Run the following command to build the images and start the containers:
     ```bash
     docker compose up --build
@@ -59,7 +63,7 @@ This project is containerized using Docker and consists of two main services:
 
     *Note: The first run may take a few minutes as it downloads the necessary Docker images and the YOLOv8 model weights.*
 
-4.  **Access the Application**
+5.  **Access the Application**
     * **Frontend**: Open [http://localhost:3000](http://localhost:3000) in your browser.
     * **Backend API**: Running at [http://localhost:8000/machine/api/](http://localhost:8000/machine/api/).
 
@@ -90,4 +94,4 @@ ai-image-analysis-qap/
 │   │   ├── utils/           # API helpers
 │   └── Dockerfile           # Frontend container config
 │   └── .env                     # Environment variables
-├── docker-compose.yml       # Orchestration
+└── docker-compose.yml       # Orchestration
