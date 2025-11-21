@@ -1,4 +1,4 @@
-# AI Vision Platform: Object Detection & Intelligent Q&A
+# AI Image Analysis & Q&A Platform
 
 A full-stack AI web application that allows users to upload images, perform real-time object detection using **YOLOv8**, and interact with the results through a conversational AI interface powered by **Google Gemini 2.5 Flash**.
 
