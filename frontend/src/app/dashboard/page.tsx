@@ -6,11 +6,9 @@ import machine from '@/utils/machine';
 import Cookies from 'js-cookie';
 import styles from '@/styles/Dashboard.module.css';
 
-// Interfaces
-interface Detection { class: string; confidence: number; box: number[]; }
+interface Detection { class: string; confidence: string; box: number[]; }
 interface ChatMessage { role: 'user' | 'ai'; content: string; }
 
-// New Interface for User Data
 interface UserProfile {
   username: string;
   email: string;
@@ -23,78 +21,63 @@ export default function Dashboard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // --- User State ---
   const [user, setUser] = useState<UserProfile | null>(null);
-  
-  // --- App State ---
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [imageId, setImageId] = useState<number | null>(null);
   const [annotatedImageUrl, setAnnotatedImageUrl] = useState<string | null>(null);
   const [detections, setDetections] = useState<Detection[]>([]);
+  
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
+
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // --- 1. Fetch User Profile on Load ---
   useEffect(() => {
     const token = Cookies.get('token');
     if (!token) {
       router.push('/');
       return;
     }
-
-    // Fetch user details from backend
     const fetchProfile = async () => {
       try {
         const response = await machine.get('/me/');
         setUser(response.data);
       } catch (error) {
         console.error("Failed to fetch profile", error);
-        // Optional: logout if token is invalid
-        // Cookies.remove('token');
-        // router.push('/');
       }
     };
-
     fetchProfile();
   }, [router]);
 
-  // Auto-scroll chat
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
-  }, [chatMessages]);
+  }, [chatMessages, isChatLoading]);
 
   const handleLogout = () => {
     Cookies.remove('token');
     router.push('/');
   };
 
-  // --- Helper: Get Display Name ---
   const getDisplayName = () => {
     if (!user) return 'Loading...';
-    if (user.first_name && user.last_name) {
-      return `${user.first_name} ${user.last_name}`;
-    }
-    return user.username; // Fallback if no full name set
+    if (user.first_name && user.last_name) return `${user.first_name} ${user.last_name}`;
+    return user.username;
   };
 
-  // --- Helper: Get Initials ---
   const getInitials = () => {
     if (!user) return '...';
     const name = getDisplayName();
     const parts = name.split(' ');
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
     return name.substring(0, 2).toUpperCase();
   };
 
-  // ... (Keep handleFileSelect, handleDetect, handleSendMessage, handleSort exactly as they were) ...
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
@@ -103,6 +86,7 @@ export default function Dashboard() {
       setAnnotatedImageUrl(null);
       setDetections([]);
       setChatMessages([]);
+      setIsChatLoading(false);
     }
   };
 
@@ -125,15 +109,19 @@ export default function Dashboard() {
   };
 
   const handleSendMessage = async () => {
-    if (!chatInput.trim() || !imageId) return;
+    if (!chatInput.trim() || !imageId || isChatLoading) return;
     const msg = chatInput;
     setChatInput('');
     setChatMessages(prev => [...prev, { role: 'user', content: msg }]);
+    setIsChatLoading(true);
+
     try {
       const res = await machine.post('/chat/', { image_id: imageId, question: msg });
       setChatMessages(prev => [...prev, { role: 'ai', content: res.data.answer }]);
     } catch (err) {
       setChatMessages(prev => [...prev, { role: 'ai', content: "Error getting response." }]);
+    } finally {
+      setIsChatLoading(false);
     }
   };
 
@@ -141,11 +129,26 @@ export default function Dashboard() {
     let direction: 'asc' | 'desc' = 'asc';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
     setSortConfig({ key, direction });
+    
     const sorted = [...detections].sort((a: any, b: any) => {
-      if (key === 'confidence') return direction === 'asc' ? a[key] - b[key] : b[key] - a[key];
+      if (key === 'confidence') {
+        const valA = parseInt(a[key].replace('%', ''));
+        const valB = parseInt(b[key].replace('%', ''));
+        return direction === 'asc' ? valA - valB : valB - valA;
+      }
       return direction === 'asc' ? String(a[key]).localeCompare(String(b[key])) : String(b[key]).localeCompare(String(a[key]));
     });
     setDetections(sorted);
+  };
+
+  // --- NEW FUNCTION: Renders Text with Bold Support ---
+  // This splits the text by '**'. Odd parts become bold.
+  // Example: "Hello **World**" -> ["Hello ", "World", ""] -> "World" is index 1 (odd) -> Bold
+  const renderMessage = (content: string) => {
+    const parts = content.split('**');
+    return parts.map((part, index) => 
+      index % 2 === 1 ? <strong key={index}>{part}</strong> : part
+    );
   };
 
   return (
@@ -160,10 +163,8 @@ export default function Dashboard() {
           </div>
           <div className={styles.userMenu}>
             <div className={styles.userInfo}>
-              {/* Display Dynamic Initials */}
               <div className={styles.avatar}>{getInitials()}</div>
               <div className={styles.userDetails}>
-                {/* Display Dynamic Name and Email */}
                 <div className={styles.userName}>{getDisplayName()}</div>
                 <div className={styles.userEmail}>{user?.email || 'Loading...'}</div>
               </div>
@@ -173,7 +174,6 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* ... (Keep the rest of the <main> content exactly the same) ... */}
       <main className={styles.mainContent}>
         <section className={styles.uploadSection}>
           <h2 className={styles.sectionTitle}>Upload Image for Detection</h2>
@@ -239,9 +239,9 @@ export default function Dashboard() {
                           <td>
                             <div className={styles.confidenceBar}>
                               <div className={styles.confidenceProgress}>
-                                <div className={styles.confidenceFill} style={{ width: `${det.confidence * 100}%` }}></div>
+                                <div className={styles.confidenceFill} style={{ width: det.confidence }}></div>
                               </div>
-                              <span className={styles.confidenceValue}>{(det.confidence * 100).toFixed(0)}%</span>
+                              <span className={styles.confidenceValue}>{det.confidence}</span>
                             </div>
                           </td>
                           <td><span className={styles.bboxCoords}>[{det.box.join(', ')}]</span></td>
@@ -256,21 +256,53 @@ export default function Dashboard() {
             <div className={styles.qaSection}>
               <div className={styles.qaHeader}>
                 <div className={styles.qaIcon}><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"></path></svg></div>
-                <div><h3 className={styles.cardTitle}>Ask Questions</h3><p className={styles.sectionSubtitle} style={{margin:0}}>Powered by Gemini</p></div>
+                <div><h3 className={styles.cardTitle}>Ask Questions</h3><p className={styles.sectionSubtitle} style={{margin:0}}>Powered by Gemini 2.5 Flash</p></div>
               </div>
+              
               <div className={styles.chatContainer} ref={chatContainerRef}>
                 {chatMessages.map((msg, idx) => (
                   <div key={idx} className={`${styles.chatMessage} ${msg.role === 'user' ? styles.user : styles.ai}`}>
                     <div className={`${styles.messageAvatar} ${msg.role === 'user' ? styles.user : styles.ai}`}>
-                         {msg.role === 'user' ? getInitials() : 'AI'}
+                          {msg.role === 'user' ? getInitials() : 'AI'}
                     </div>
-                    <div className={styles.messageContent}>{msg.content}</div>
+                    {/* --- CHANGE HERE: Use renderMessage instead of direct string --- */}
+                    <div className={styles.messageContent}>
+                      {renderMessage(msg.content)}
+                    </div>
                   </div>
                 ))}
+                
+                {isChatLoading && (
+                  <div className={`${styles.chatMessage} ${styles.ai}`}>
+                    <div className={`${styles.messageAvatar} ${styles.ai}`}>AI</div>
+                    <div className={`${styles.messageContent} ${styles.loadingBubble}`}>
+                      <div className={styles.typingIndicator}>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
+
               <div className={styles.qaInputWrapper}>
-                <input type="text" className={styles.qaInput} placeholder="Ask about results..." value={chatInput} onChange={(e) => setChatInput(e.target.value)} />
-                <button className={styles.qaSubmit} onClick={handleSendMessage}>Send</button>
+                <input 
+                  type="text" 
+                  className={styles.qaInput} 
+                  placeholder={isChatLoading ? "AI is thinking..." : "Ask about results..."} 
+                  value={chatInput} 
+                  onChange={(e) => setChatInput(e.target.value)} 
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  disabled={isChatLoading}
+                />
+                <button 
+                  className={styles.qaSubmit} 
+                  onClick={handleSendMessage}
+                  disabled={isChatLoading}
+                >
+                  Send
+                </button>
               </div>
             </div>
           </div>
